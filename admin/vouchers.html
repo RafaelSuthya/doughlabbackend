@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dough Lab Admin • Vouchers</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <input id="nav-toggle" type="checkbox" class="nav-toggle">
+    <aside class="sidebar">
+      <div class="brand">Dough Lab Admin</div>
+      <nav class="nav">
+        <a href="index.html">Dashboard</a>
+        <a href="orders.html">Pesanan</a>
+        <a href="products.html">Produk</a>
+        <a href="stock.html">Stok</a>
+        <a href="locations.html">Lokasi</a>
+        <a href="vouchers.html" class="active">Vouchers</a>
+        <a href="addon.html">Addon</a>
+        <a href="pengiriman.html">Pengiriman</a>
+        <a href="login.html">Keluar</a>
+      </nav>
+    </aside>
+    <div class="content">
+      <header class="topbar">
+        <label for="nav-toggle" class="menu-btn">Menu</label>
+        <div class="brand">Vouchers</div>
+        <div class="avatar">DL</div>
+      </header>
+      <main class="main compact">
+        <section>
+          <div class="filters">
+            <input id="q" class="input" placeholder="Cari kode atau produk">
+            <div style="display:flex;gap:8px">
+              <button id="btnAdd" class="btn" type="button">Tambah voucher</button>
+            </div>
+          </div>
+        </section>
+        <section>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Produk</th>
+                <th>Kode</th>
+                <th>Tipe</th>
+                <th>Nilai</th>
+                <th>Periode</th>
+                <th>Qty</th>
+                <th>Aktif</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="list"></tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="voucher-form" class="modal">
+    <div class="overlay" id="overlayForm"></div>
+    <div class="modal-card">
+      <div class="section-title">Voucher</div>
+      <div style="display:grid;gap:10px;margin-top:10px">
+        <select id="fProduct" class="input"></select>
+        <input id="fCode" class="input" placeholder="Kode voucher">
+        <select id="fType" class="input">
+          <option value="percent">Persen</option>
+          <option value="amount">Nominal</option>
+          <option value="free">Gratis</option>
+        </select>
+        <input id="fValue" class="input" placeholder="Nilai (mis. 10 atau 20000)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <input id="fStart" class="input" type="datetime-local">
+          <input id="fEnd" class="input" type="datetime-local">
+        </div>
+        <input id="fQty" class="input" type="number" min="1" placeholder="Jumlah voucher">
+        <label style="display:flex;gap:8px;align-items:center"><input id="fActive" type="checkbox" checked> Aktif</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <img id="fPreview" class="thumb" src="https://via.placeholder.com/64" alt="preview">
+          <span class="muted">Gambar mengambil dari galeri ke-2 produk</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="saveVoucher" class="btn" type="button">Simpan</button>
+        <button id="cancelVoucher" class="btn-secondary" type="button">Batal</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    function getProducts(){ try { const raw = localStorage.getItem('dl_products'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    function getVouchers(){ try { const raw = localStorage.getItem('dl_vouchers'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    function setVouchers(v){ localStorage.setItem('dl_vouchers', JSON.stringify(v)); }
+    function openDB(){return new Promise((res,rej)=>{const req=indexedDB.open('dl_store',1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('images'))db.createObjectStore('images')};req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error)})}
+    async function getImageBlob(key){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').get(key);req.onsuccess=()=>res(req.result||null);req.onerror=()=>rej(req.error)})}
+    async function getImageURL(key){const blob=await getImageBlob(key);return blob?URL.createObjectURL(blob):''}
+    const CURRENCY = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+    function render(){
+      const q = document.getElementById('q').value.trim().toLowerCase();
+      const list = document.getElementById('list');
+      list.innerHTML='';
+      const prods = getProducts();
+      getVouchers().filter(v=>{
+        if (!q) return true;
+        const prod = prods.find(p=>p.id===v.productId);
+        const name = prod?prod.name:'';
+        return (String(v.code||'').toLowerCase().includes(q) || String(name||'').toLowerCase().includes(q));
+      }).forEach((v)=>{
+        const tr = document.createElement('tr');
+        const prod = prods.find(p=>p.id===v.productId);
+        const per = `${v.start||''} s/d ${v.end||''}`;
+        tr.innerHTML = `
+          <td>${prod?prod.name:''}</td>
+          <td>${v.code}</td>
+          <td>${v.type}</td>
+          <td>${v.type==='percent'? (v.value+'%') : CURRENCY.format(Number(v.value||0))}</td>
+          <td>${per}</td>
+          <td>${v.qty||0}</td>
+          <td>${v.active? 'Ya' : 'Tidak'}</td>
+          <td><div class="table-actions"><button class="btn-secondary" data-id="${v.id}" data-action="edit" type="button">Kelola</button><button class="btn-danger" data-id="${v.id}" data-action="del" type="button">Hapus</button></div></td>
+        `;
+        list.appendChild(tr);
+      })
+    }
+    function openForm(voucher){
+      const modal = document.getElementById('voucher-form');
+      modal.classList.add('open');
+      const prods = getProducts();
+      const sel = document.getElementById('fProduct');
+      sel.innerHTML='';
+      prods.forEach(p=>{ const opt=document.createElement('option'); opt.value=p.id; opt.textContent=p.name; sel.appendChild(opt); });
+      document.getElementById('fProduct').value = voucher?voucher.productId:(prods[0]?prods[0].id:'');
+      document.getElementById('fCode').value = voucher?voucher.code:'';
+      document.getElementById('fType').value = voucher?voucher.type:'percent';
+      document.getElementById('fValue').value = voucher?voucher.value:'';
+      document.getElementById('fStart').value = voucher?voucher.start:'';
+      document.getElementById('fEnd').value = voucher?voucher.end:'';
+      document.getElementById('fQty').value = voucher?voucher.qty||1:1;
+      document.getElementById('fActive').checked = voucher?!!voucher.active:true;
+      const updatePreview = async ()=>{
+        const pid = document.getElementById('fProduct').value;
+        const p = prods.find(x=>x.id===pid);
+        const second = (p && p.gallery && p.gallery[1]) || '';
+        const url = second?await getImageURL(second):'';
+        document.getElementById('fPreview').src = url || 'https://via.placeholder.com/64';
+      };
+      document.getElementById('fProduct').onchange = updatePreview; updatePreview();
+      document.getElementById('saveVoucher').onclick = ()=>{
+        const pid = document.getElementById('fProduct').value;
+        const code = document.getElementById('fCode').value.trim();
+        const type = document.getElementById('fType').value;
+        const value = document.getElementById('fValue').value.trim();
+        const start = document.getElementById('fStart').value;
+        const end = document.getElementById('fEnd').value;
+        const qty = parseInt(document.getElementById('fQty').value||'1',10);
+        const active = document.getElementById('fActive').checked;
+        if (!pid || !code) { alert('Produk dan kode wajib diisi'); return; }
+        const items = getVouchers();
+        if (voucher){
+          const idx = items.findIndex(x=>x.id===voucher.id);
+          if (idx>=0) items[idx] = { ...voucher, productId: pid, code, type, value, start, end, qty, active };
+        } else {
+          items.push({ id: 'v-'+Date.now(), productId: pid, code, type, value, start, end, qty, active, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() });
+        }
+        setVouchers(items);
+        modal.classList.remove('open');
+        render();
+      };
+    }
+    document.getElementById('btnAdd').addEventListener('click', ()=> openForm(null));
+    document.getElementById('overlayForm').addEventListener('click', ()=> document.getElementById('voucher-form').classList.remove('open'));
+    document.getElementById('cancelVoucher').addEventListener('click', ()=> document.getElementById('voucher-form').classList.remove('open'));
+    document.getElementById('q').addEventListener('input', render);
+    document.getElementById('list').addEventListener('click',(e)=>{
+      const id = e.target.getAttribute('data-id');
+      const act = e.target.getAttribute('data-action');
+      if (!id || !act) return;
+      if (act==='edit'){
+        const v = getVouchers().find(x=>x.id===id);
+        if (v) openForm(v);
+      } else if (act==='del'){
+        const items = getVouchers().filter(x=>x.id!==id);
+        setVouchers(items); render();
+      }
+    });
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dough Lab Admin • Lokasi</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .cities { display:grid; gap:8px; }
+    .city-link { padding:8px 10px; border-radius:10px; border:1px solid var(--border); background: var(--surface); cursor:pointer; }
+    .city-link.active { background: var(--bg); font-weight:700; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:16px; }
+    .store-card { background: var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; }
+    .store-title { font-weight:800; font-size:16px; }
+    .muted-sm { color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <input id="nav-toggle" type="checkbox" class="nav-toggle">
+    <aside class="sidebar">
+      <div class="brand">Dough Lab Admin</div>
+      <nav class="nav">
+        <a href="index.html">Dashboard</a>
+        <a href="orders.html">Pesanan</a>
+        <a href="products.html">Produk</a>
+        <a href="stock.html">Stok</a>
+        <a href="locations.html" class="active">Lokasi</a>
+        <a href="vouchers.html">Vouchers</a>
+        <a href="addon.html">Addon</a>
+        <a href="pengiriman.html">Pengiriman</a>
+        <a href="login.html">Keluar</a>
+      </nav>
+    </aside>
+    <div class="content">
+      <header class="topbar">
+        <label for="nav-toggle" class="menu-btn">Menu</label>
+        <div class="brand">Lokasi Store</div>
+        <div class="avatar">DL</div>
+      </header>
+      <main class="main">
+        <section>
+          <div style="display:grid; grid-template-columns: 220px 1fr; gap:16px; align-items:start">
+            <div>
+              <div class="section-title">Kota</div>
+              <div id="cities" class="cities" style="margin-top:10px"></div>
+            </div>
+            <div>
+              <div class="section-title">Store</div>
+              <div style="display:flex;gap:8px;margin:10px 0"><button id="btnAdd" class="btn" type="button">Tambah lokasi</button></div>
+              <div id="stores" class="grid"></div>
+              <div id="gofoodWrap" style="margin-top:20px">
+                <div class="section-title">GoFood Only</div>
+                <div style="display:flex;gap:8px;margin:10px 0"><button id="btnAddGo" class="btn" type="button">Tambah lokasi GoFood</button></div>
+                <div id="gofood" class="grid"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="loc-form" class="modal">
+    <div class="overlay" id="overlayForm"></div>
+    <div class="modal-card">
+      <div class="section-title">Lokasi Store</div>
+      <div style="display:grid;gap:10px;margin-top:10px">
+        <input id="fCity" class="input" placeholder="Kota (Jakarta/Bali/Tangerang/Surabaya)">
+        <input id="fMall" class="input" placeholder="Nama Mall/Area">
+        <textarea id="fAddress" class="input" rows="3" placeholder="Alamat lengkap"></textarea>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <input id="fOpen" class="input" placeholder="Buka (mis. 10.00)">
+          <input id="fClose" class="input" placeholder="Tutup (mis. 22.00)">
+        </div>
+        <input id="fMap" class="input" placeholder="Link peta (Google Maps)">
+        <label style="display:flex;gap:8px;align-items:center"><input id="fGofood" type="checkbox"> GoFood Only</label>
+      </div>
+      <div class="modal-actions">
+        <button id="saveLoc" class="btn" type="button">Simpan</button>
+        <button id="cancelLoc" class="btn-secondary" type="button">Batal</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const CITY_LIST = ['Jakarta','Bali','Tangerang','Surabaya'];
+    function getLocations(){ try { const raw = localStorage.getItem('dl_locations'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    function setLocations(v){ localStorage.setItem('dl_locations', JSON.stringify(v)); }
+    function ensureSeed(){
+      const cur = getLocations();
+      if (cur && cur.length) return cur;
+      const seed = [
+        { id:'jak-cp', city:'Jakarta', mall:'Central Park', address:'Central Park Lower Ground, Jl. Letjen S. Parman...', open:'10.00', close:'22.00', map:'https://maps.google.com/?q=Central+Park+Jakarta', gofoodOnly:false },
+        { id:'jak-gi', city:'Jakarta', mall:'Grand Indonesia', address:'Grand Indonesia West Mall LG Floor, Jl. M.H. Thamrin...', open:'10.00', close:'22.00', map:'https://maps.google.com/?q=Grand+Indonesia', gofoodOnly:false },
+        { id:'jak-pik', city:'Jakarta', mall:'PIK Avenue', address:'PIK Avenue 1st Floor, Jl. Pantai Indah Utara I...', open:'10.00', close:'22.00', map:'https://maps.google.com/?q=PIK+Ave', gofoodOnly:false },
+        { id:'jak-kemang', city:'Jakarta', mall:'Kemang', address:'Jl. Ampera Raya No. 120 AA, Cilandak, Jakarta Selatan...', open:'10.00', close:'22.00', map:'https://maps.google.com/?q=Kemang+Jakarta', gofoodOnly:true },
+        { id:'sby-genteng', city:'Surabaya', mall:'Genteng', address:'Jl. Ambengan 1-3, Genteng, Kota Surabaya...', open:'10.00', close:'22.00', map:'https://maps.google.com/?q=Genteng+Surabaya', gofoodOnly:true },
+        { id:'sby-wonocolo', city:'Surabaya', mall:'Wonocolo', address:'Jl. Margorejo Indah No.7, Wonocolo, Kota Surabaya...', open:'10.00', close:'22.00', map:'https://maps.google.com/?q=Wonocolo+Surabaya', gofoodOnly:true }
+      ];
+      setLocations(seed); return seed;
+    }
+    function renderCities(active){
+      const wrap = document.getElementById('cities');
+      wrap.innerHTML='';
+      CITY_LIST.forEach(c=>{ const a=document.createElement('button'); a.type='button'; a.className='city-link'+(c===active?' active':''); a.textContent=c; a.setAttribute('data-city', c); wrap.appendChild(a); });
+    }
+    function renderStores(city){
+      const grid = document.getElementById('stores');
+      const goGrid = document.getElementById('gofood');
+      const goWrap = document.getElementById('gofoodWrap');
+      grid.innerHTML=''; goGrid.innerHTML='';
+      const all = getLocations().filter(s=>String(s.city).toLowerCase()===String(city).toLowerCase());
+      const normal = all.filter(s=>!s.gofoodOnly);
+      const gofood = all.filter(s=>s.gofoodOnly);
+      normal.forEach(s=>{
+        const card = document.createElement('div');
+        card.className='store-card';
+        card.innerHTML = `
+          <div class="store-title">${s.mall}</div>
+          <div class="muted-sm" style="margin-top:6px">${s.address}</div>
+          <div style="margin-top:8px;font-weight:700">${s.open} - ${s.close} WIB</div>
+          <div style="margin-top:8px"><a class="btn-secondary" href="${s.map}" target="_blank">Lihat di Map</a></div>
+          <div class="table-actions" style="margin-top:10px">
+            <button class="btn-secondary" data-id="${s.id}" data-action="edit" type="button">Kelola</button>
+            <button class="btn-danger" data-id="${s.id}" data-action="del" type="button">Hapus</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      })
+      gofood.forEach(s=>{
+        const card = document.createElement('div');
+        card.className='store-card';
+        card.innerHTML = `
+          <div class="store-title">${s.mall}</div>
+          <div class="muted-sm" style="margin-top:6px">${s.address}</div>
+          <div style="margin-top:8px;font-weight:700">${s.open} - ${s.close} WIB</div>
+          <div style="margin-top:8px"><a class="btn-secondary" href="${s.map}" target="_blank">Lihat di Map</a></div>
+          <div class="muted-sm" style="margin-top:8px">GoFood Only</div>
+          <div class="table-actions" style="margin-top:10px">
+            <button class="btn-secondary" data-id="${s.id}" data-action="edit" type="button">Kelola</button>
+            <button class="btn-danger" data-id="${s.id}" data-action="del" type="button">Hapus</button>
+          </div>
+        `;
+        goGrid.appendChild(card);
+      })
+      goWrap.style.display = gofood.length ? 'block' : 'none';
+    }
+    let currentCity = CITY_LIST[0];
+    function openForm(store, forceGofood){
+      const modal = document.getElementById('loc-form');
+      modal.classList.add('open');
+      document.getElementById('fCity').value = store?store.city:currentCity;
+      document.getElementById('fMall').value = store?store.mall:'';
+      document.getElementById('fAddress').value = store?store.address:'';
+      document.getElementById('fOpen').value = store?store.open:'';
+      document.getElementById('fClose').value = store?store.close:'';
+      document.getElementById('fMap').value = store?store.map:'';
+      document.getElementById('fGofood').checked = !!(forceGofood || (store && store.gofoodOnly));
+      document.getElementById('saveLoc').onclick = ()=>{
+        const city = document.getElementById('fCity').value.trim();
+        const mall = document.getElementById('fMall').value.trim();
+        const address = document.getElementById('fAddress').value.trim();
+        const open = document.getElementById('fOpen').value.trim();
+        const close = document.getElementById('fClose').value.trim();
+        const map = document.getElementById('fMap').value.trim();
+        const gofoodOnly = document.getElementById('fGofood').checked;
+        if (!city || !mall) { alert('Kota dan nama mall wajib diisi'); return; }
+        const items = getLocations();
+        if (store){
+          const idx = items.findIndex(x=>x.id===store.id);
+          if (idx>=0) items[idx] = { ...store, city, mall, address, open, close, map, gofoodOnly };
+        } else {
+          const id = city.toLowerCase()+':'+mall.toLowerCase().replace(/\s+/g,'-')+':'+Date.now();
+          items.push({ id, city, mall, address, open, close, map, gofoodOnly });
+        }
+        setLocations(items);
+        modal.classList.remove('open');
+        currentCity = city;
+        renderCities(currentCity);
+        renderStores(currentCity);
+      };
+    }
+    function init(){
+      ensureSeed();
+      renderCities(currentCity);
+      renderStores(currentCity);
+      document.getElementById('cities').addEventListener('click',(e)=>{
+        const c = e.target.getAttribute('data-city');
+        if (!c) return;
+        currentCity = c;
+        renderCities(currentCity);
+        renderStores(currentCity);
+      });
+      document.getElementById('btnAdd').addEventListener('click', ()=> openForm(null));
+      const btnAddGo = document.getElementById('btnAddGo');
+      if (btnAddGo) btnAddGo.addEventListener('click', ()=> openForm(null, true));
+      document.getElementById('stores').addEventListener('click',(e)=>{
+        const id = e.target.getAttribute('data-id');
+        const act = e.target.getAttribute('data-action');
+        if (!id || !act) return;
+        if (act==='edit') {
+          const items = getLocations();
+          const store = items.find(x=>x.id===id);
+          if (store) openForm(store);
+        } else if (act==='del') {
+          const items = getLocations().filter(x=>x.id!==id);
+          setLocations(items);
+          renderStores(currentCity);
+        }
+      });
+      const goGrid = document.getElementById('gofood');
+      if (goGrid) goGrid.addEventListener('click',(e)=>{
+        const id = e.target.getAttribute('data-id');
+        const act = e.target.getAttribute('data-action');
+        if (!id || !act) return;
+        if (act==='edit') {
+          const items = getLocations();
+          const store = items.find(x=>x.id===id);
+          if (store) openForm(store, true);
+        } else if (act==='del') {
+          const items = getLocations().filter(x=>x.id!==id);
+          setLocations(items);
+          renderStores(currentCity);
+        }
+      });
+      document.getElementById('overlayForm').addEventListener('click', ()=> document.getElementById('loc-form').classList.remove('open'));
+      document.getElementById('cancelLoc').addEventListener('click', ()=> document.getElementById('loc-form').classList.remove('open'));
+    }
+    init();
+  </script>
+</body>
+</html>

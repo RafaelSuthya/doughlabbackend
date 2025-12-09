@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dough Lab Admin • Kelola Produk</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <input id="nav-toggle" type="checkbox" class="nav-toggle">
+    <aside class="sidebar">
+      <div class="brand">Dough Lab Admin</div>
+      <nav class="nav">
+        <a href="index.html">Dashboard</a>
+        <a href="orders.html">Pesanan</a>
+        <a href="products.html" class="active">Produk</a>
+        <a href="stock.html">Stok</a>
+        <a href="locations.html">Lokasi</a>
+        <a href="vouchers.html">Vouchers</a>
+        <a href="addon.html">Addon</a>
+        <a href="pengiriman.html">Pengiriman</a>
+        <a href="login.html">Keluar</a>
+      </nav>
+    </aside>
+    <div class="content">
+      <header class="topbar">
+        <label for="nav-toggle" class="menu-btn">Menu</label>
+        <div class="brand">Kelola Produk</div>
+        <div class="avatar">DL</div>
+      </header>
+      <main class="main">
+        <section>
+          <div style="display:grid;gap:16px">
+            <div style="display:grid;grid-template-columns: 92px 1fr auto;gap:12px;align-items:center">
+              <img id="preview" class="thumb" src="https://via.placeholder.com/92" alt="preview">
+              <div style="display:grid;gap:8px">
+                <input id="name" class="input" placeholder="Nama produk">
+                <input id="intro" class="input" placeholder="Perkenalan produk">
+                <div style="display:flex;gap:8px;align-items:center"><span class="muted">Warna</span><input id="color" type="color" value="#b42318" style="width:48px;height:32px;padding:0;border:1px solid var(--border);border-radius:8px"></div>
+              </div>
+              <div>
+                <input id="galleryInput" type="file" accept="image/*" multiple style="display:none">
+                <button id="addImages" class="btn" type="button">Tambah gambar</button>
+              </div>
+            </div>
+            <div class="gallery" id="gallery" style="margin-top:10px"></div>
+            <div>
+              <div class="section-title">About The Cookie</div>
+              <textarea id="about" class="input" rows="4" placeholder="Deskripsi"></textarea>
+            </div>
+            <div>
+              <div class="section-title">Ingredients</div>
+              <textarea id="ingredients" class="input" rows="3" placeholder="Daftar bahan, pisahkan dengan koma"></textarea>
+            </div>
+            <div>
+              <div class="section-title">Cookie Care</div>
+              <textarea id="care" class="input" rows="4" placeholder="Petunjuk penyimpanan dan penyajian"></textarea>
+            </div>
+            <div>
+              <div class="section-title">Shipping Detail</div>
+              <textarea id="shipping" class="input" rows="4" placeholder="Informasi pengiriman"></textarea>
+            </div>
+            <div>
+              <div class="section-title">Pilihan PCS</div>
+              <div id="pcsRows" class="list" style="margin-top:10px"></div>
+              <div style="margin-top:10px"><button id="addRow" class="btn-secondary" type="button">Tambah baris PCS</button></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button id="save" class="btn" type="button">Simpan</button>
+              <a class="btn-secondary" href="products.html">Kembali</a>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const CURRENCY = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+    function getProducts(){try{const r=localStorage.getItem('dl_products');return r?JSON.parse(r):[]}catch{return[]}}
+    function setProducts(v){localStorage.setItem('dl_products', JSON.stringify(v))}
+    function openDB(){return new Promise((res,rej)=>{const req=indexedDB.open('dl_store',1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('images'))db.createObjectStore('images')};req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error)})}
+    async function putImage(key, blob){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction('images','readwrite');tx.objectStore('images').put(blob,key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+    async function getImageURL(key){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').get(key);req.onsuccess=()=>{if(req.result){const url=URL.createObjectURL(req.result);res(url)}else{res('')} };req.onerror=()=>rej(req.error)})}
+    async function deleteImage(key){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction('images','readwrite');tx.objectStore('images').delete(key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+    const params = new URLSearchParams(location.search);
+    let id = params.get('id') || 'new';
+    let product = null;
+    const rowsEl = document.getElementById('pcsRows');
+    function rowTemplate(item, idx){
+      const price = item.price || 0;
+      const active = item.active ? 'checked' : '';
+      return `<div class="list-item" data-idx="${idx}">
+        <div style="display:flex;gap:10px;align-items:center">
+          <input class="input" type="number" min="1" value="${item.qty||3}" style="width:110px" placeholder="PCS">
+          <input class="input" type="number" min="0" value="${price}" style="width:160px" placeholder="Harga">
+          <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${active}> Aktif</label>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" type="button">Hapus</button>
+        </div>
+      </div>`
+    }
+    function load(){
+      const products = getProducts();
+      product = products.find(p=>p.id===id);
+      if (!product){
+        product = { id: id==='new'?('prod-'+Date.now()):id, name:'', intro:'', color:'#b42318', stock:0, image:'', gallery:[], about:'', ingredients:'', care:'', shipping:'', pcs:[{qty:3,price:0,active:true},{qty:4,price:0,active:true}] };
+        if (id!=='new') products.push(product), setProducts(products);
+      }
+      document.getElementById('name').value = product.name || '';
+      document.getElementById('intro').value = product.intro || '';
+      document.getElementById('color').value = product.color || '#b42318';
+      document.getElementById('about').value = product.about || '';
+      document.getElementById('ingredients').value = product.ingredients || '';
+      document.getElementById('care').value = product.care || '';
+      document.getElementById('shipping').value = product.shipping || '';
+      if (product.gallery && product.gallery[0]) { getImageURL(product.gallery[0]).then(u=>{ document.getElementById('preview').src = u||'https://via.placeholder.com/92' }) } else { document.getElementById('preview').src = product.image || 'https://via.placeholder.com/92' }
+      renderGallery();
+      rowsEl.innerHTML = '';
+      product.pcs.forEach((it,i)=>{const wrap=document.createElement('div');wrap.innerHTML=rowTemplate(it,i);rowsEl.appendChild(wrap.firstChild)});
+    }
+    function save(){
+      const products = getProducts();
+      const idx = products.findIndex(p=>p.id===product.id);
+      product.name = document.getElementById('name').value.trim();
+      if (!product.name) { alert('Nama produk wajib diisi'); return; }
+      product.intro = document.getElementById('intro').value.trim();
+      product.color = document.getElementById('color').value || '#b42318';
+      product.about = document.getElementById('about').value.trim();
+      product.ingredients = document.getElementById('ingredients').value.trim();
+      product.care = document.getElementById('care').value.trim();
+      product.shipping = document.getElementById('shipping').value.trim();
+      const items = Array.from(rowsEl.querySelectorAll('.list-item'));
+      product.pcs = items.map(el=>{
+        const inputs = el.querySelectorAll('input');
+        return { qty: parseInt(inputs[0].value||'0',10), price: parseInt(inputs[1].value||'0',10), active: inputs[2].checked };
+      }).filter(x=>x.qty>0);
+      if (product.gallery && product.gallery.length>0) product.image = product.gallery[0];
+      if (idx>=0) products[idx]=product; else products.push(product);
+      setProducts(products);
+      location.href = 'products.html';
+    }
+    async function renderGallery(){
+      const wrap = document.getElementById('gallery');
+      wrap.innerHTML='';
+      for (let i=0;i<Math.min((product.gallery||[]).length,10);i++){const key=product.gallery[i];const el=document.createElement('div');el.className='gallery-item';el.innerHTML=`<img class="gallery-thumb" data-gkey="${key}" src=""><div class="gallery-actions"><button class="btn-secondary" data-remove="${i}" type="button">Hapus</button></div>`;wrap.appendChild(el);const url=await getImageURL(key);const img=el.querySelector('img');img.src=url||'https://via.placeholder.com/92'}
+    }
+    document.getElementById('addImages').addEventListener('click', ()=> document.getElementById('galleryInput').click());
+    document.getElementById('galleryInput').addEventListener('change', async (e)=>{
+      const files = Array.from(e.target.files||[]);
+      for (const f of files){
+        if (!f.type.startsWith('image/')) continue;
+        if ((product.gallery||[]).length>=10) break;
+        const key=product.id+':'+Date.now()+':'+Math.random().toString(36).slice(2);
+        await putImage(key,f);
+        product.gallery=product.gallery||[];
+        product.gallery.push(key);
+      }
+      await renderGallery();
+      if (product.gallery[0]) { const u=await getImageURL(product.gallery[0]); document.getElementById('preview').src = u||'https://via.placeholder.com/92' } else { document.getElementById('preview').src='https://via.placeholder.com/92' }
+      e.target.value='';
+    })
+    document.getElementById('gallery').addEventListener('click', async (e)=>{
+      const idx = e.target.getAttribute('data-remove');
+      if (idx!==null && idx!==undefined){
+        const i = parseInt(idx,10);
+        if (!isNaN(i)){
+          const key=product.gallery[i];
+          product.gallery.splice(i,1);
+          await deleteImage(key);
+          await renderGallery();
+          if (product.gallery[0]) { const u=await getImageURL(product.gallery[0]); document.getElementById('preview').src = u||'https://via.placeholder.com/92' } else { document.getElementById('preview').src='https://via.placeholder.com/92' }
+        }
+      }
+    })
+    document.getElementById('addRow').addEventListener('click', ()=>{
+      const wrap=document.createElement('div');wrap.innerHTML=rowTemplate({qty:6,price:0,active:true},product.pcs.length);rowsEl.appendChild(wrap.firstChild)
+    })
+    rowsEl.addEventListener('click', e=>{
+      if (e.target.tagName==='BUTTON') { e.target.closest('.list-item').remove(); }
+    })
+    const saveBtn = document.getElementById('save');
+    saveBtn.addEventListener('click', (e)=>{ e.preventDefault(); try { save(); } catch (err) { alert('Gagal menyimpan: '+ (err && err.message ? err.message : err)); } });
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); try { save(); } catch (err) { alert('Gagal menyimpan: '+ (err && err.message ? err.message : err)); } } });
+    load();
+  </script>
+</body>
+</html>

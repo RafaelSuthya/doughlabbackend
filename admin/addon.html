@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dough Lab Admin • Addon</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <input id="nav-toggle" type="checkbox" class="nav-toggle">
+    <aside class="sidebar">
+      <div class="brand">Dough Lab Admin</div>
+      <nav class="nav">
+        <a href="index.html">Dashboard</a>
+        <a href="orders.html">Pesanan</+>
+        <a href="products.html">Produk</a>
+        <a href="stock.html">Stok</a>
+        <a href="locations.html">Lokasi</a>
+        <a href="vouchers.html">Vouchers</a>
+        <a href="addon.html" class="active">Addon</a>
+        <a href="pengiriman.html">Pengiriman</a>
+        <a href="login.html">Keluar</a>
+      </nav>
+    </aside>
+    <div class="content">
+      <header class="topbar">
+        <label for="nav-toggle" class="menu-btn">Menu</label>
+        <div class="brand">Addon</div>
+        <div class="avatar">DL</div>
+      </header>
+      <main class="main compact">
+        <section>
+          <div class="section-title">Daftar Addon</div>
+          <div class="filters">
+            <input id="qAddon" class="input" placeholder="Cari addon">
+            <button id="btnAddAddon" class="btn" type="button">Tambah addon</button>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>Catatan</th>
+                <th>Harga</th>
+                <th>Aktif</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="addonList"></tbody>
+          </table>
+        </section>
+
+        <section>
+          <div class="section-title">Stok Addon per Lokasi</div>
+          <div class="filters">
+            <select id="addonSelect" class="input"></select>
+            <button id="btnAddInv" class="btn" type="button">Tambah stok lokasi</button>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Lokasi</th>
+                <th>On Hand</th>
+                <th>Reserved</th>
+                <th>Safe</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="invList"></tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="modalAddon" class="modal">
+    <div class="overlay" id="overlayAddon"></div>
+    <div class="modal-card">
+      <div class="section-title">Addon</div>
+      <div style="display:grid;gap:10px;margin-top:10px">
+        <input id="adName" class="input" placeholder="Nama addon">
+        <input id="adNotes" class="input" placeholder="Catatan">
+        <input id="adPrice" class="input" placeholder="Harga">
+        <label style="display:flex;gap:8px;align-items:center"><input id="adActive" type="checkbox" checked> Aktif</label>
+      </div>
+      <div class="modal-actions">
+        <button id="saveAddon" class="btn" type="button">Simpan</button>
+        <button id="cancelAddon" class="btn-secondary" type="button">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalInv" class="modal">
+    <div class="overlay" id="overlayInv"></div>
+    <div class="modal-card">
+      <div class="section-title">Stok Addon di Lokasi</div>
+      <div style="display:grid;gap:10px;margin-top:10px">
+        <select id="invAddon" class="input"></select>
+        <select id="invLoc" class="input"></select>
+        <input id="invOnHand" class="input" type="number" min="0" placeholder="On Hand">
+        <input id="invReserved" class="input" type="number" min="0" placeholder="Reserved">
+        <input id="invSafe" class="input" type="number" min="0" placeholder="Safe">
+      </div>
+      <div class="modal-actions">
+        <button id="saveInv" class="btn" type="button">Simpan</button>
+        <button id="cancelInv" class="btn-secondary" type="button">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getAddons(){ try { const raw = localStorage.getItem('dl_addons'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    function setAddons(v){ localStorage.setItem('dl_addons', JSON.stringify(v)); }
+    function getInv(){ try { const raw = localStorage.getItem('dl_addoninventory'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    function setInv(v){ localStorage.setItem('dl_addoninventory', JSON.stringify(v)); }
+    function getLocations(){ try { const raw = localStorage.getItem('dl_locations'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    const CURRENCY = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+
+    function renderAddons(){
+      const q = document.getElementById('qAddon').value.trim().toLowerCase();
+      const tbody = document.getElementById('addonList');
+      tbody.innerHTML='';
+      getAddons().filter(a=> !q || String(a.addonName||'').toLowerCase().includes(q)).forEach(a=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${a.addonName}</td>
+          <td>${a.addonNotes||''}</td>
+          <td>${CURRENCY.format(Number(a.addonPrice||0))}</td>
+          <td>${a.isActive? 'Ya':'Tidak'}</td>
+          <td><div class="table-actions"><button class="btn-secondary" data-id="${a.addonID}" data-action="edit" type="button">Kelola</button><button class="btn-danger" data-id="${a.addonID}" data-action="del" type="button">Hapus</button></div></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      const sel = document.getElementById('addonSelect');
+      const cur = sel.value; sel.innerHTML='';
+      getAddons().forEach(a=>{ const opt=document.createElement('option'); opt.value=a.addonID; opt.textContent=a.addonName; sel.appendChild(opt); });
+      if (cur) sel.value = cur;
+      renderInv();
+    }
+
+    function renderInv(){
+      const tbody = document.getElementById('invList');
+      tbody.innerHTML='';
+      const addonID = Number(document.getElementById('addonSelect').value || '0');
+      const locs = getLocations(); const locMap = Object.fromEntries(locs.map(l=>[l.id, l.mall]));
+      getInv().filter(i=> !addonID || i.addonID===addonID).forEach(i=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${locMap[i.locationID]||i.locationID}</td>
+          <td>${i.stockOnHand||0}</td>
+          <td>${i.stockReserved||0}</td>
+          <td>${i.stockSafe||0}</td>
+          <td><div class="table-actions"><button class="btn-secondary" data-id="${i.addoninventoryID}" data-action="edit" type="button">Kelola</button><button class="btn-danger" data-id="${i.addoninventoryID}" data-action="del" type="button">Hapus</button></div></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openAddonForm(item){
+      const m = document.getElementById('modalAddon');
+      m.classList.add('open');
+      document.getElementById('adName').value = item?item.addonName:'';
+      document.getElementById('adNotes').value = item?item.addonNotes||'':'';
+      document.getElementById('adPrice').value = item?item.addonPrice||'':'';
+      document.getElementById('adActive').checked = item?!!item.isActive:true;
+      document.getElementById('saveAddon').onclick = ()=>{
+        const addonName = document.getElementById('adName').value.trim();
+        const addonNotes = document.getElementById('adNotes').value.trim();
+        const addonPrice = document.getElementById('adPrice').value.trim();
+        const isActive = document.getElementById('adActive').checked;
+        if (!addonName) { alert('Nama addon wajib diisi'); return; }
+        const items = getAddons();
+        if (item){
+          const idx = items.findIndex(x=>x.addonID===item.addonID);
+          if (idx>=0) items[idx] = { ...item, addonName, addonNotes, addonPrice, isActive, updatedDate: new Date().toISOString() };
+        } else {
+          items.push({ addonID: Date.now(), addonName, addonNotes, addonPrice, isActive, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() });
+        }
+        setAddons(items);
+        m.classList.remove('open'); renderAddons();
+      };
+    }
+
+    function openInvForm(item){
+      const m = document.getElementById('modalInv');
+      m.classList.add('open');
+      const aSel = document.getElementById('invAddon');
+      aSel.innerHTML='';
+      getAddons().forEach(a=>{ const opt=document.createElement('option'); opt.value=a.addonID; opt.textContent=a.addonName; aSel.appendChild(opt); });
+      const lSel = document.getElementById('invLoc');
+      lSel.innerHTML='';
+      getLocations().forEach(l=>{ const opt=document.createElement('option'); opt.value=l.id; opt.textContent=l.mall; lSel.appendChild(opt); });
+      document.getElementById('invAddon').value = item?item.addonID:(getAddons()[0]?getAddons()[0].addonID:'');
+      document.getElementById('invLoc').value = item?item.locationID:(getLocations()[0]?getLocations()[0].id:'');
+      document.getElementById('invOnHand').value = item?item.stockOnHand||0:0;
+      document.getElementById('invReserved').value = item?item.stockReserved||0:0;
+      document.getElementById('invSafe').value = item?item.stockSafe||0:0;
+      document.getElementById('saveInv').onclick = ()=>{
+        const addonID = Number(document.getElementById('invAddon').value);
+        const locationID = document.getElementById('invLoc').value;
+        const stockOnHand = Number(document.getElementById('invOnHand').value||'0');
+        const stockReserved = Number(document.getElementById('invReserved').value||'0');
+        const stockSafe = Number(document.getElementById('invSafe').value||'0');
+        if (!addonID || !locationID) { alert('Addon dan lokasi wajib dipilih'); return; }
+        const items = getInv();
+        if (item){
+          const idx = items.findIndex(x=>x.addoninventoryID===item.addoninventoryID);
+          if (idx>=0) items[idx] = { ...item, addonID, locationID, stockOnHand, stockReserved, stockSafe, updatedDate: new Date().toISOString() };
+        } else {
+          items.push({ addoninventoryID: Date.now(), addonID, locationID, stockOnHand, stockReserved, stockSafe, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() });
+        }
+        setInv(items);
+        m.classList.remove('open'); renderInv();
+      };
+    }
+
+    document.getElementById('qAddon').addEventListener('input', renderAddons);
+    document.getElementById('btnAddAddon').addEventListener('click', ()=> openAddonForm(null));
+    document.getElementById('btnAddInv').addEventListener('click', ()=> openInvForm(null));
+    document.getElementById('addonSelect').addEventListener('change', renderInv);
+    document.getElementById('overlayAddon').addEventListener('click', ()=> document.getElementById('modalAddon').classList.remove('open'));
+    document.getElementById('overlayInv').addEventListener('click', ()=> document.getElementById('modalInv').classList.remove('open'));
+    document.getElementById('cancelAddon').addEventListener('click', ()=> document.getElementById('modalAddon').classList.remove('open'));
+    document.getElementById('cancelInv').addEventListener('click', ()=> document.getElementById('modalInv').classList.remove('open'));
+    document.getElementById('addonList').addEventListener('click',(e)=>{
+      const id = Number(e.target.getAttribute('data-id')||'0');
+      const act = e.target.getAttribute('data-action');
+      if (!id || !act) return;
+      if (act==='edit'){ const item = getAddons().find(x=>x.addonID===id); if (item) openAddonForm(item); }
+      else if (act==='del'){ const items = getAddons().filter(x=>x.addonID!==id); setAddons(items); renderAddons(); }
+    });
+    document.getElementById('invList').addEventListener('click',(e)=>{
+      const id = Number(e.target.getAttribute('data-id')||'0');
+      const act = e.target.getAttribute('data-action');
+      if (!id || !act) return;
+      if (act==='edit'){ const item = getInv().find(x=>x.addoninventoryID===id); if (item) openInvForm(item); }
+      else if (act==='del'){ const items = getInv().filter(x=>x.addoninventoryID!==id); setInv(items); renderInv(); }
+    });
+    renderAddons();
+  </script>
+</body>
+</html>

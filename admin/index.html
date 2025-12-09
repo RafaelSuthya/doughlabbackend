@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dough Lab Admin • Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <input id="nav-toggle" type="checkbox" class="nav-toggle">
+    <aside class="sidebar">
+      <div class="brand">Dough Lab Admin</div>
+      <nav class="nav">
+        <a href="#" class="active">Dashboard</a>
+        <a href="orders.html">Pesanan</a>
+        <a href="products.html">Produk</a>
+        <a href="stock.html">Stok</a>
+        <a href="locations.html">Lokasi</a>
+        <a href="vouchers.html">Vouchers</a>
+        <a href="addon.html">Addon</a>
+        <a href="pengiriman.html">Pengiriman</a>
+        <a href="login.html">Keluar</a>
+      </nav>
+    </aside>
+    <div class="content">
+      <header class="topbar">
+        <label for="nav-toggle" class="menu-btn">Menu</label>
+        <div class="brand">Dashboard</div>
+        <div class="avatar">DL</div>
+      </header>
+      <main class="main">
+        <section>
+          <div class="cards">
+            <a class="card" href="orders.html">
+              <div class="metric">128</div>
+              <div class="metric-sub">Pesanan hari ini</div>
+            </a>
+            <div class="card">
+              <div class="metric">Rp 12,5jt</div>
+              <div class="metric-sub">Pendapatan</div>
+            </div>
+            <div class="card">
+              <div class="metric">54</div>
+              <div class="metric-sub">Produk aktif</div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-title">Pesanan Terbaru</div>
+          <table class="table" style="margin-top:10px">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Pelanggan</th>
+                <th>Item</th>
+                <th>Total</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>#DL-1024</td>
+                <td>Nadia</td>
+                <td>Sourdough x2</td>
+                <td>Rp 96.000</td>
+                <td><span class="status paid">Dibayar</span></td>
+              </tr>
+              <tr>
+                <td>#DL-1023</td>
+                <td>Raka</td>
+                <td>Bagel x12</td>
+                <td>Rp 120.000</td>
+                <td><span class="status pending">Menunggu</span></td>
+              </tr>
+              <tr>
+                <td>#DL-1022</td>
+                <td>Intan</td>
+                <td>Croissant x6</td>
+                <td>Rp 90.000</td>
+                <td><span class="status paid">Dibayar</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px">
+            <a class="btn" href="orders.html">Kelola pesanan</a>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-title">Stok Menipis</div>
+          <div class="list" style="margin-top:10px">
+            <div class="list-item">
+              <div>Rye Flour 1kg</div>
+              <div class="badge">5 pcs</div>
+            </div>
+            <div class="list-item">
+              <div>Almond Slice</div>
+              <div class="badge">8 pcs</div>
+            </div>
+            <div class="list-item">
+              <div>Unsalted Butter 250g</div>
+              <div class="badge">4 pcs</div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

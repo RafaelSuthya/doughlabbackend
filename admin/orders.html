@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dough Lab Admin • Pesanan</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <input id="nav-toggle" type="checkbox" class="nav-toggle">
+    <aside class="sidebar">
+      <div class="brand">Dough Lab Admin</div>
+      <nav class="nav">
+        <a href="index.html">Dashboard</a>
+        <a href="orders.html" class="active">Pesanan</a>
+        <a href="products.html">Produk</a>
+        <a href="stock.html">Stok</a>
+        <a href="locations.html">Lokasi</a>
+        <a href="vouchers.html">Vouchers</a>
+        <a href="addon.html">Addon</a>
+        <a href="pengiriman.html">Pengiriman</a>
+        <a href="login.html">Keluar</a>
+      </nav>
+    </aside>
+    <div class="content">
+      <header class="topbar">
+        <label for="nav-toggle" class="menu-btn">Menu</label>
+        <div class="brand">Pesanan</div>
+        <div class="avatar">DL</div>
+      </header>
+      <input class="status-radio" type="radio" name="status-DL-1024" id="st-DL-1024-menunggu">
+      <input class="status-radio" type="radio" name="status-DL-1024" id="st-DL-1024-dibayar" checked>
+      <input class="status-radio" type="radio" name="status-DL-1024" id="st-DL-1024-dikirim">
+      <input class="status-radio" type="radio" name="status-DL-1024" id="st-DL-1024-sampai">
+      <input class="status-radio" type="radio" name="status-DL-1023" id="st-DL-1023-menunggu" checked>
+      <input class="status-radio" type="radio" name="status-DL-1023" id="st-DL-1023-dibayar">
+      <input class="status-radio" type="radio" name="status-DL-1023" id="st-DL-1023-dikirim">
+      <input class="status-radio" type="radio" name="status-DL-1023" id="st-DL-1023-sampai">
+      <input class="status-radio" type="radio" name="status-DL-1022" id="st-DL-1022-menunggu">
+      <input class="status-radio" type="radio" name="status-DL-1022" id="st-DL-1022-dibayar" checked>
+      <input class="status-radio" type="radio" name="status-DL-1022" id="st-DL-1022-dikirim">
+      <input class="status-radio" type="radio" name="status-DL-1022" id="st-DL-1022-sampai">
+      <main class="main orders">
+        <section>
+          <div class="filters">
+            <input id="search" class="input" placeholder="Cari ID atau nama pelanggan">
+            <div style="display:flex;gap:8px">
+              <button id="searchBtn" class="btn" type="button">Cari</button>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <table class="table" style="margin-top:10px">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tanggal</th>
+                <th>Pelanggan</th>
+                <th>Item</th>
+                <th>Total</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="orderList"></tbody>
+          </table>
+        </section>
+
+        <section>
+          <div class="section-title">Ringkasan</div>
+          <div class="cards" style="margin-top:10px">
+            <div class="card">
+              <div id="sumActive" class="metric">0</div>
+              <div class="metric-sub">Pesanan aktif</div>
+            </div>
+            <div class="card">
+              <div id="sumTotal" class="metric">Rp 0</div>
+              <div class="metric-sub">Total nilai</div>
+            </div>
+            <div class="card">
+              <div id="sumPaid" class="metric">0</div>
+              <div class="metric-sub">Dibayar</div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="order-detail" class="modal">
+    <a class="overlay" href="#" id="closeDetail"></a>
+    <div class="modal-card">
+      <div class="section-title" id="detailTitle"></div>
+      <div id="detailMeta" class="list" style="margin-top:10px"></div>
+      <table class="table" style="margin-top:10px">
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Varian</th>
+            <th>Qty</th>
+            <th>Harga</th>
+            <th>Berat</th>
+          </tr>
+        </thead>
+        <tbody id="detailItems"></tbody>
+      </table>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <a class="btn" href="#" id="closeDetailBtn">Tutup</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="status-modal" class="modal">
+    <a class="overlay" href="#" id="closeStatus"></a>
+    <div class="modal-card">
+      <div class="section-title" id="statusTitle"></div>
+      <div style="display:grid;gap:8px;margin-top:12px">
+        <button class="btn btn-secondary" data-st="Menunggu" type="button">Menunggu</button>
+        <button class="btn btn-secondary" data-st="Dibayar" type="button">Dibayar</button>
+        <button class="btn btn-secondary" data-st="Dikirim" type="button">Dikirim</button>
+        <button class="btn btn-secondary" data-st="Sampai" type="button">Sampai</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <a class="btn" href="#" id="closeStatusBtn">Selesai</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    function getOrders(){ try { const raw = localStorage.getItem('dl_orders'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    function setOrders(v){ localStorage.setItem('dl_orders', JSON.stringify(v)); }
+    function getItemOrders(){ try { const raw = localStorage.getItem('dl_itemorders'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    function setItemOrders(v){ localStorage.setItem('dl_itemorders', JSON.stringify(v)); }
+    const CURRENCY = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+    function seed(){
+      if (getOrders().length) return;
+      const orders = [
+        { orderID: 1024, customerID: 1, billName: 'Nadia', orderStatus: 'Dibayar', orderTotal: 96000, orderTax: 0, orderShipping: 0, grandTotal: 96000, createdDate: new Date().toISOString() },
+        { orderID: 1023, customerID: 2, billName: 'Raka', orderStatus: 'Menunggu', orderTotal: 120000, orderTax: 0, orderShipping: 0, grandTotal: 120000, createdDate: new Date().toISOString() },
+        { orderID: 1022, customerID: 3, billName: 'Intan', orderStatus: 'Dibayar', orderTotal: 90000, orderTax: 0, orderShipping: 0, grandTotal: 90000, createdDate: new Date().toISOString() }
+      ];
+      const items = [
+        { itemorderID: 1, orderID: 1024, cookiesvariantID: 11, orderName: 'Sourdough', orderVariant: 'Original', orderQty: 2, orderPrice: 48000, orderWeight: 500 },
+        { itemorderID: 2, orderID: 1023, cookiesvariantID: 22, orderName: 'Bagel', orderVariant: 'Sesame', orderQty: 12, orderPrice: 10000, orderWeight: 60 },
+        { itemorderID: 3, orderID: 1022, cookiesvariantID: 33, orderName: 'Croissant', orderVariant: 'Butter', orderQty: 6, orderPrice: 15000, orderWeight: 80 }
+      ];
+      setOrders(orders); setItemOrders(items);
+    }
+    function summaryItem(orderID){
+      const items = getItemOrders().filter(i=>i.orderID===orderID);
+      if (!items.length) return '';
+      const first = items[0];
+      return `${first.orderName} x${first.orderQty}`;
+    }
+    function render(){
+      const list = document.getElementById('orderList');
+      list.innerHTML='';
+      const rows = [];
+      getOrders().forEach(o=>{
+        const tr = document.createElement('tr');
+        tr.className = 'row';
+        tr.setAttribute('data-id', String(o.orderID));
+        tr.setAttribute('data-customer', String(o.billName||''));
+        tr.innerHTML = `
+          <td>${o.orderID}</td>
+          <td>${new Date(o.createdDate).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</td>
+          <td>${o.billName||''}</td>
+          <td>${summaryItem(o.orderID)}</td>
+          <td>${CURRENCY.format(Number(o.grandTotal||o.orderTotal||0))}</td>
+          <td><div class="table-actions"><a class="btn-secondary" href="#" data-action="detail" data-id="${o.orderID}">Detail</a><a class="btn" href="#" data-action="status" data-id="${o.orderID}">Ubah status</a></div></td>
+        `;
+        list.appendChild(tr);
+        rows.push(tr);
+      });
+      const input = document.getElementById('search');
+      function apply(){
+        const q = input.value.trim().toLowerCase();
+        rows.forEach(r=>{
+          if (!q) { r.style.display=''; return; }
+          const id = (r.getAttribute('data-id')||'').toLowerCase();
+          const customer = (r.getAttribute('data-customer')||'').toLowerCase();
+          r.style.display = (id.includes(q) || customer.includes(q)) ? '' : 'none';
+        });
+      }
+      document.getElementById('searchBtn').onclick = apply;
+      input.onkeydown = e=>{ if (e.key==='Enter') apply(); };
+      input.oninput = apply;
+      const active = getOrders().filter(o=>o.orderStatus!=='Selesai').length;
+      const paid = getOrders().filter(o=>o.orderStatus==='Dibayar').length;
+      const total = getOrders().reduce((a,b)=> a + Number(b.grandTotal||b.orderTotal||0), 0);
+      document.getElementById('sumActive').textContent = String(active);
+      document.getElementById('sumPaid').textContent = String(paid);
+      document.getElementById('sumTotal').textContent = CURRENCY.format(total);
+    }
+    function openDetail(id){
+      const items = getItemOrders().filter(i=>i.orderID===id);
+      const o = getOrders().find(x=>x.orderID===id);
+      document.getElementById('detailTitle').textContent = `Detail Pesanan ${id}`;
+      document.getElementById('detailMeta').innerHTML = `
+        <div class="list-item"><div>Pelanggan</div><div class="badge">${o?o.billName||'': ''}</div></div>
+        <div class="list-item"><div>Status</div><div class="badge"><span class="status ${String(o?o.orderStatus||'Menunggu':'Menunggu').toLowerCase()}">${o?o.orderStatus||'Menunggu':'Menunggu'}</span></div></div>
+      `;
+      const tbody = document.getElementById('detailItems');
+      tbody.innerHTML='';
+      items.forEach(i=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i.orderName}</td>
+          <td>${i.orderVariant}</td>
+          <td>${i.orderQty}</td>
+          <td>${CURRENCY.format(Number(i.orderPrice||0))}</td>
+          <td>${i.orderWeight}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('order-detail').classList.add('open');
+    }
+    function openStatus(id){
+      const o = getOrders().find(x=>x.orderID===id);
+      document.getElementById('statusTitle').textContent = `Ubah Status ${id}`;
+      const modal = document.getElementById('status-modal');
+      modal.classList.add('open');
+      modal.querySelectorAll('[data-st]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const st = btn.getAttribute('data-st');
+          const items = getOrders();
+          const idx = items.findIndex(x=>x.orderID===id);
+          if (idx>=0) items[idx] = { ...items[idx], orderStatus: st, updatedDate: new Date().toISOString() };
+          setOrders(items); render();
+        };
+      });
+    }
+    document.getElementById('closeDetail').addEventListener('click', ()=> document.getElementById('order-detail').classList.remove('open'));
+    document.getElementById('closeDetailBtn').addEventListener('click', ()=> document.getElementById('order-detail').classList.remove('open'));
+    document.getElementById('closeStatus').addEventListener('click', ()=> document.getElementById('status-modal').classList.remove('open'));
+    document.getElementById('closeStatusBtn').addEventListener('click', ()=> document.getElementById('status-modal').classList.remove('open'));
+    document.getElementById('orderList').addEventListener('click',(e)=>{
+      const id = Number(e.target.getAttribute('data-id')||'0');
+      const act = e.target.getAttribute('data-action');
+      if (!id || !act) return;
+      if (act==='detail') openDetail(id);
+      else if (act==='status') openStatus(id);
+    });
+    seed(); render();
+  </script>
+</body>
+</html>

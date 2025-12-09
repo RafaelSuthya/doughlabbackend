@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dough Lab Admin • Pengiriman</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <input id="nav-toggle" type="checkbox" class="nav-toggle">
+    <aside class="sidebar">
+      <div class="brand">Dough Lab Admin</div>
+      <nav class="nav">
+        <a href="index.html">Dashboard</a>
+        <a href="orders.html">Pesanan</a>
+        <a href="products.html">Produk</a>
+        <a href="stock.html">Stok</a>
+        <a href="locations.html">Lokasi</a>
+        <a href="vouchers.html">Vouchers</a>
+        <a href="addon.html">Addon</a>
+        <a href="pengiriman.html" class="active">Pengiriman</a>
+        <a href="login.html">Keluar</a>
+      </nav>
+    </aside>
+    <div class="content">
+      <header class="topbar">
+        <label for="nav-toggle" class="menu-btn">Menu</label>
+        <div class="brand">Pengiriman</div>
+        <div class="avatar">DL</div>
+      </header>
+      <main class="main compact">
+        <section>
+          <div class="section-title">Jasa Kirim</div>
+          <div class="filters">
+            <input id="qLog" class="input" placeholder="Cari jasa kirim">
+            <button id="btnAddLog" class="btn" type="button">Tambah jasa kirim</button>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>Aktif</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="logList"></tbody>
+          </table>
+        </section>
+        <section>
+          <div class="section-title">Layanan Pengiriman</div>
+          <div class="filters">
+            <select id="logSelect" class="input"></select>
+            <button id="btnAddSvc" class="btn" type="button">Tambah layanan</button>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Jasa Kirim</th>
+                <th>Nama Layanan</th>
+                <th>Aktif</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="svcList"></tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="modalLog" class="modal">
+    <div class="overlay" id="overlayLog"></div>
+    <div class="modal-card">
+      <div class="section-title">Jasa Kirim</div>
+      <div style="display:grid;gap:10px;margin-top:10px">
+        <input id="logName" class="input" placeholder="Nama jasa kirim">
+        <label style="display:flex;gap:8px;align-items:center"><input id="logActive" type="checkbox" checked> Aktif</label>
+      </div>
+      <div class="modal-actions">
+        <button id="saveLog" class="btn" type="button">Simpan</button>
+        <button id="cancelLog" class="btn-secondary" type="button">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalSvc" class="modal">
+    <div class="overlay" id="overlaySvc"></div>
+    <div class="modal-card">
+      <div class="section-title">Layanan Pengiriman</div>
+      <div style="display:grid;gap:10px;margin-top:10px">
+        <select id="svcLog" class="input"></select>
+        <input id="svcName" class="input" placeholder="Nama layanan">
+        <label style="display:flex;gap:8px;align-items:center"><input id="svcActive" type="checkbox" checked> Aktif</label>
+      </div>
+      <div class="modal-actions">
+        <button id="saveSvc" class="btn" type="button">Simpan</button>
+        <button id="cancelSvc" class="btn-secondary" type="button">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getLogistics(){ try { const raw = localStorage.getItem('dl_logistics'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    function setLogistics(v){ localStorage.setItem('dl_logistics', JSON.stringify(v)); }
+    function getServices(){ try { const raw = localStorage.getItem('dl_logisticservices'); return raw?JSON.parse(raw):[]; } catch { return []; } }
+    function setServices(v){ localStorage.setItem('dl_logisticservices', JSON.stringify(v)); }
+
+    function renderLogs(){
+      const q = document.getElementById('qLog').value.trim().toLowerCase();
+      const tbody = document.getElementById('logList');
+      tbody.innerHTML='';
+      getLogistics().filter(l=> !q || String(l.name||'').toLowerCase().includes(q)).forEach(l=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${l.name}</td>
+          <td>${l.isActive? 'Ya':'Tidak'}</td>
+          <td><div class="table-actions"><button class="btn-secondary" data-id="${l.id}" data-action="edit" type="button">Kelola</button><button class="btn-danger" data-id="${l.id}" data-action="del" type="button">Hapus</button></div></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      const sel = document.getElementById('logSelect');
+      const cur = sel.value;
+      sel.innerHTML='';
+      getLogistics().forEach(l=>{ const opt=document.createElement('option'); opt.value=l.id; opt.textContent=l.name; sel.appendChild(opt); });
+      if (cur) sel.value = cur;
+      renderSvcs();
+    }
+
+    function renderSvcs(){
+      const tbody = document.getElementById('svcList');
+      tbody.innerHTML='';
+      const logs = getLogistics();
+      const logId = document.getElementById('logSelect').value || (logs[0]?logs[0].id:'');
+      const map = Object.fromEntries(logs.map(l=>[l.id,l.name]));
+      getServices().filter(s=> !logId || s.logisticId===logId).forEach(s=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${map[s.logisticId]||''}</td>
+          <td>${s.serviceName}</td>
+          <td>${s.isActive? 'Ya':'Tidak'}</td>
+          <td><div class="table-actions"><button class="btn-secondary" data-id="${s.id}" data-action="edit" type="button">Kelola</button><button class="btn-danger" data-id="${s.id}" data-action="del" type="button">Hapus</button></div></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openLogForm(item){
+      const m = document.getElementById('modalLog');
+      m.classList.add('open');
+      document.getElementById('logName').value = item?item.name:'';
+      document.getElementById('logActive').checked = item?!!item.isActive:true;
+      document.getElementById('saveLog').onclick = ()=>{
+        const name = document.getElementById('logName').value.trim();
+        const active = document.getElementById('logActive').checked;
+        if (!name) { alert('Nama wajib diisi'); return; }
+        const items = getLogistics();
+        if (item){
+          const idx = items.findIndex(x=>x.id===item.id);
+          if (idx>=0) items[idx] = { ...item, name, isActive: active, updatedDate: new Date().toISOString() };
+        } else {
+          items.push({ id: 'log-'+Date.now(), name, isActive: active, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() });
+        }
+        setLogistics(items);
+        m.classList.remove('open');
+        renderLogs();
+      };
+    }
+
+    function openSvcForm(item){
+      const m = document.getElementById('modalSvc');
+      m.classList.add('open');
+      const sel = document.getElementById('svcLog');
+      sel.innerHTML='';
+      getLogistics().forEach(l=>{ const opt=document.createElement('option'); opt.value=l.id; opt.textContent=l.name; sel.appendChild(opt); });
+      document.getElementById('svcLog').value = item?item.logisticId:(getLogistics()[0]?getLogistics()[0].id:'');
+      document.getElementById('svcName').value = item?item.serviceName:'';
+      document.getElementById('svcActive').checked = item?!!item.isActive:true;
+      document.getElementById('saveSvc').onclick = ()=>{
+        const logisticId = document.getElementById('svcLog').value;
+        const serviceName = document.getElementById('svcName').value.trim();
+        const isActive = document.getElementById('svcActive').checked;
+        if (!logisticId || !serviceName) { alert('Jasa kirim dan nama layanan wajib diisi'); return; }
+        const items = getServices();
+        if (item){
+          const idx = items.findIndex(x=>x.id===item.id);
+          if (idx>=0) items[idx] = { ...item, logisticId, serviceName, isActive, updatedDate: new Date().toISOString() };
+        } else {
+          items.push({ id: 'svc-'+Date.now(), logisticId, serviceName, isActive, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() });
+        }
+        setServices(items);
+        m.classList.remove('open');
+        renderSvcs();
+      };
+    }
+
+    document.getElementById('qLog').addEventListener('input', renderLogs);
+    document.getElementById('btnAddLog').addEventListener('click', ()=> openLogForm(null));
+    document.getElementById('btnAddSvc').addEventListener('click', ()=> openSvcForm(null));
+    document.getElementById('logSelect').addEventListener('change', renderSvcs);
+    document.getElementById('overlayLog').addEventListener('click', ()=> document.getElementById('modalLog').classList.remove('open'));
+    document.getElementById('overlaySvc').addEventListener('click', ()=> document.getElementById('modalSvc').classList.remove('open'));
+    document.getElementById('cancelLog').addEventListener('click', ()=> document.getElementById('modalLog').classList.remove('open'));
+    document.getElementById('cancelSvc').addEventListener('click', ()=> document.getElementById('modalSvc').classList.remove('open'));
+    document.getElementById('logList').addEventListener('click',(e)=>{
+      const id = e.target.getAttribute('data-id');
+      const act = e.target.getAttribute('data-action');
+      if (!id || !act) return;
+      if (act==='edit'){
+        const item = getLogistics().find(x=>x.id===id); if (item) openLogForm(item);
+      } else if (act==='del'){
+        const items = getLogistics().filter(x=>x.id!==id); setLogistics(items); renderLogs();
+      }
+    });
+    document.getElementById('svcList').addEventListener('click',(e)=>{
+      const id = e.target.getAttribute('data-id');
+      const act = e.target.getAttribute('data-action');
+      if (!id || !act) return;
+      if (act==='edit'){
+        const item = getServices().find(x=>x.id===id); if (item) openSvcForm(item);
+      } else if (act==='del'){
+        const items = getServices().filter(x=>x.id!==id); setServices(items); renderSvcs();
+      }
+    });
+
+    renderLogs();
+  </script>
+</body>
+</html>

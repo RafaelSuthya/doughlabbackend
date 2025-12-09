@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dough Lab Admin • Produk</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <input id="nav-toggle" type="checkbox" class="nav-toggle">
+    <aside class="sidebar">
+      <div class="brand">Dough Lab Admin</div>
+      <nav class="nav">
+        <a href="index.html">Dashboard</a>
+        <a href="orders.html">Pesanan</a>
+        <a href="products.html" class="active">Produk</a>
+        <a href="stock.html">Stok</a>
+        <a href="locations.html">Lokasi</a>
+        <a href="vouchers.html">Vouchers</a>
+        <a href="addon.html">Addon</a>
+        <a href="pengiriman.html">Pengiriman</a>
+        <a href="login.html">Keluar</a>
+      </nav>
+    </aside>
+    <div class="content">
+      <header class="topbar">
+        <label for="nav-toggle" class="menu-btn">Menu</label>
+        <div class="brand">Produk</div>
+        <div class="avatar">DL</div>
+      </header>
+      <main class="main compact">
+        <section>
+          <div class="filters">
+            <input id="q" class="input" placeholder="Cari nama produk atau ID">
+            <div style="display:flex;gap:8px">
+              <a class="btn" href="product.html?id=new">Tambah produk</a>
+              <button id="btnBackup" class="btn-secondary" type="button" style="display:none">Backup</button>
+              <input id="restoreInput" type="file" accept="application/json" style="display:none">
+              <button id="btnRestore" class="btn-secondary" type="button" style="display:none">Restore</button>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Gambar</th>
+                <th>Nama</th>
+                <th>Harga</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="list"></tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const seed = [
+      {
+        id: 'the-nationalist',
+        name: 'Dough Lab - The Nationalist',
+        intro: 'Red velvet cookies with cream cheese filling.',
+        color: '#b42318',
+        stock: 12,
+        image: 'https://via.placeholder.com/64',
+        gallery: ['https://via.placeholder.com/640x640?text=Nationalist+1','https://via.placeholder.com/640x640?text=Nationalist+2'],
+        about: 'Red velvet cookies with cream cheese filling.',
+        ingredients: 'Flour, butter, cane sugar, cream cheese, cocoa powder, vanilla, eggs, baking soda',
+        pcs: [
+          { qty: 3, price: 76576, active: true },
+          { qty: 4, price: 99099, active: true }
+        ]
+      }
+    ];
+    const CURRENCY = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+    function openDB(){return new Promise((res,rej)=>{const req=indexedDB.open('dl_store',1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('images'))db.createObjectStore('images')};req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error)})}
+    async function getImageBlob(key){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').get(key);req.onsuccess=()=>res(req.result||null);req.onerror=()=>rej(req.error)})}
+    async function putImage(key, blob){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction('images','readwrite');tx.objectStore('images').put(blob,key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+    async function getImageURL(key){const blob=await getImageBlob(key);return blob?URL.createObjectURL(blob):''}
+    function blobToBase64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const s=String(r.result||'');const idx=s.indexOf('base64,');res(idx>=0?s.slice(idx+7):s)};r.onerror=()=>rej(r.error);r.readAsDataURL(blob)})}
+    function base64ToBlob(b64,mime){const bin=atob(b64);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return new Blob([arr],{type:mime||'image/png'})}
+    function getProducts() {
+      const raw = localStorage.getItem('dl_products');
+      if (!raw) {
+        localStorage.setItem('dl_products', JSON.stringify(seed));
+        return seed;
+      }
+      try { return JSON.parse(raw); } catch { return seed; }
+    }
+    function render() {
+      const q = document.getElementById('q').value.trim().toLowerCase();
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+      getProducts().filter(p => {
+        if (!q) return true;
+        return (p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
+      }).forEach(p => {
+        const tr = document.createElement('tr');
+        const thumb = 'https://via.placeholder.com/64';
+        const prices = (p.pcs||[]).filter(x=>x && x.active && Number.isFinite(x.price)).map(x=>x.price);
+        let priceText = '-';
+        if (prices.length === 1) {
+          priceText = CURRENCY.format(prices[0]);
+        } else if (prices.length > 1) {
+          const min = Math.min.apply(null, prices);
+          const max = Math.max.apply(null, prices);
+          priceText = `${CURRENCY.format(min)} - ${CURRENCY.format(max)}`;
+        }
+        const firstKey = (p.gallery && p.gallery[0]) || '';
+        const intro = p.intro || p.about || '';
+        const color = p.color || '#b42318';
+        tr.innerHTML = `
+          <td><img class="thumb" data-ikey="${firstKey}" src="${thumb}" alt="${p.name}"></td>
+          <td><div><span class="dot" style="background:${color}"></span><span>${p.name}</span><div class="muted" style="margin-top:4px">${intro}</div></div></td>
+          <td>${priceText}</td>
+          <td><div class="table-actions"><a class="btn-secondary" href="product.html?id=${encodeURIComponent(p.id)}">Kelola</a><button class="btn-danger" data-del-id="${encodeURIComponent(p.id)}" type="button">Hapus</button></div></td>
+        `;
+        list.appendChild(tr);
+        if (firstKey) { getImageURL(firstKey).then(u=>{ const img=list.querySelector(`img[data-ikey="${firstKey}"]`); if (img && u) img.src=u }) }
+      });
+    }
+    async function exportBackup(){
+      const products = getProducts();
+      const out = [];
+      for (const p of products){
+        const copy = { ...p, gallery: [] };
+        for (const key of (p.gallery||[])){
+          const blob = await getImageBlob(key);
+          if (blob){
+            const b64 = await blobToBase64(blob);
+            copy.gallery.push({ data: b64, mime: blob.type||'image/png' });
+          }
+        }
+        out.push(copy);
+      }
+      const json = JSON.stringify({ products: out }, null, 2);
+      const file = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'dl_backup.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    async function importBackup(file){
+      const text = await file.text();
+      let data = null; try { data = JSON.parse(text); } catch { alert('File backup tidak valid'); return; }
+      if (!data || !Array.isArray(data.products)) { alert('Struktur backup tidak valid'); return; }
+      const imported = [];
+      for (const p of data.products){
+        const galleryKeys = [];
+        for (const g of (p.gallery||[])){
+          if (!g || !g.data) continue;
+          const key = (p.id||('prod-'+Date.now()))+':'+Date.now()+':'+Math.random().toString(36).slice(2);
+          const blob = base64ToBlob(String(g.data), g.mime||'image/png');
+          await putImage(key, blob);
+          galleryKeys.push(key);
+        }
+        const prod = { ...p, gallery: galleryKeys };
+        imported.push(prod);
+      }
+      localStorage.setItem('dl_products', JSON.stringify(imported));
+      render();
+      alert('Restore selesai');
+    }
+    document.getElementById('btnBackup').addEventListener('click', ()=>{ exportBackup().catch(err=>alert('Gagal backup: '+err)) });
+    const restoreInput = document.getElementById('restoreInput');
+    document.getElementById('btnRestore').addEventListener('click', ()=> restoreInput.click());
+    restoreInput.addEventListener('change', (e)=>{ const f=e.target.files&&e.target.files[0]; if (f) importBackup(f).catch(err=>alert('Gagal restore: '+err)); e.target.value=''; });
+    document.getElementById('q').addEventListener('input', render);
+    const modalMsg = document.getElementById('confirmMsg');
+    let toDeleteId = null;
+    document.getElementById('list').addEventListener('click', (e)=>{
+      const id = e.target.getAttribute('data-del-id');
+      if (!id) return;
+      toDeleteId = decodeURIComponent(id);
+      const prod = getProducts().find(p=>p.id===toDeleteId);
+      const modalEl = document.getElementById('delete-confirm');
+      if (modalMsg) modalMsg.textContent = `Hapus produk "${(prod && prod.name) ? prod.name : toDeleteId}"?`;
+      if (modalEl) modalEl.classList.add('open');
+      const confirmBtn = document.getElementById('confirmDelete');
+      const cancelBtn = document.getElementById('cancelDelete');
+      const overlayDelete = document.getElementById('overlayDelete');
+      if (confirmBtn) confirmBtn.onclick = ()=>{
+        const products = getProducts().filter(p=>p.id!==toDeleteId);
+        localStorage.setItem('dl_products', JSON.stringify(products));
+        toDeleteId = null;
+        if (modalEl) modalEl.classList.remove('open');
+        render();
+      };
+      if (cancelBtn) cancelBtn.onclick = ()=>{ toDeleteId=null; if (modalEl) modalEl.classList.remove('open'); };
+      if (overlayDelete) overlayDelete.onclick = ()=>{ toDeleteId=null; if (modalEl) modalEl.classList.remove('open'); };
+    });
+    document.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter' && modalEl && modalEl.classList.contains('open')) {
+        const confirmBtn = document.getElementById('confirmDelete');
+        if (confirmBtn) confirmBtn.click();
+      }
+    });
+    render();
+  </script>
+  <div id="delete-confirm" class="modal">
+    <div class="overlay" id="overlayDelete"></div>
+    <div class="modal-card">
+      <div class="section-title">Konfirmasi Hapus</div>
+      <div id="confirmMsg" class="muted" style="margin-top:8px"></div>
+      <div class="modal-actions">
+        <button id="confirmDelete" class="btn-danger" type="button">Konfirmasi Hapus</button>
+        <button id="cancelDelete" class="btn-secondary" type="button">Batal</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
